@@ -14,7 +14,7 @@ services:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "--password=password"]
       interval: 5s
       timeout: 10s
-      retries: 5
+      retries: 10
 
   wp:
     build: ./wordpress
@@ -32,6 +32,23 @@ services:
     volumes:
       - ./wp-app:/var/www/html
       - ./config/php.conf.ini:/usr/local/etc/php/conf.d/conf.ini
+
+  wpcli:
+    build: ./wpcli
+    image: project-root-wpcli
+    volumes:
+      - ./wp-app:/var/www/html
+      - ./config/php.conf.ini:/usr/local/etc/php/conf.d/conf.ini
+    environment:
+      WORDPRESS_DB_HOST: db
+      WORDPRESS_DB_USER: root
+      WORDPRESS_DB_PASSWORD: password
+      WORDPRESS_DB_NAME: wordpress
+    depends_on:
+      wp:
+        condition: service_started
+    links:
+      - db
 
   pma:
     build: ./pma

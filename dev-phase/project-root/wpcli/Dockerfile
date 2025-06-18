@@ -1,7 +1,17 @@
 FROM wordpress:cli
 
-WORKDIR /var/www/html
+# Switch to root for package installation
+USER root
 
-# Optional: Add custom scripts if needed
-# COPY ./your-script.sh /your-script.sh
-# RUN chmod +x /your-script.sh
+# Install bash and coreutils (for better scripting support)
+RUN apk add --no-cache bash coreutils
+
+# Copy entrypoint script
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+# Switch back to www-data user
+USER www-data
+
+# Set entrypoint
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
