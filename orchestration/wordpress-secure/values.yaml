@@ -1,0 +1,93 @@
+# Namespace name
+namespace: wordpress-staging
+
+# Image credentials
+imageCredentials:
+  username: datascientest-tarasamira
+  password: ""
+
+# Global security settings
+global:
+  storageClass: "standard"  # Use standard storage for minikube
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    readOnlyRootFilesystem: true
+
+# WordPress settings
+wordpress:
+  replicaCount: 3
+  image:
+    repository: ghcr.io/datascientest-tarasamira/project-root-wp
+    tag: v1.2-secure
+    pullPolicy: IfNotPresent
+    pullSecret: ghcr-credentials
+  env:
+    WORDPRESS_DB_HOST: mysql-service
+    WORDPRESS_DB_NAME: wordpress
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 512Mi
+    requests:
+      cpu: 500m
+      memory: 256Mi
+  persistence:
+    size: 5Gi
+  service:
+    type: LoadBalancer
+    port: 80
+  ingress:
+    enabled: true
+    hostname: secure.wp.example.com
+    tlsSecret: wordpress-tls
+  security:
+    podSecurityContext:
+      seccompProfile:
+        type: RuntimeDefault
+    containerSecurityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: ["ALL"]
+
+# MySQL settings
+mysql:
+  enabled: true
+  auth:
+    existingSecret: "mysql-secret"
+  primary:
+    persistence:
+      size: 3Gi
+      storageClass: "standard"
+    podSecurityContext:
+      fsGroup: 1000
+    containerSecurityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
+      readOnlyRootFilesystem: true
+      allowPrivilegeEscalation: false
+    resources:
+      limits:
+        cpu: 500m
+        memory: 256Mi
+      requests:
+        cpu: 250m
+        memory: 128Mi
+  networkPolicy:
+    enabled: true
+    allowExternal: false
+
+# phpMyAdmin settings
+phpmyadmin:
+  enabled: false  # Disable by default in production
+  image:
+    repository: phpmyadmin/phpmyadmin
+    tag: 5.2.1  # Specific version instead of latest
+  service:
+    type: ClusterIP  # Not exposed externally
+    port: 80
+  env:
+    PMA_HOST: mysql-service
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000

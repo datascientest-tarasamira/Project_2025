@@ -1,4 +1,4 @@
-FROM wordpress:cli
+FROM wordpress:cli-2.10.0
 
 # Switch to root for package installation
 USER root

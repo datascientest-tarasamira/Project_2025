@@ -1,0 +1,66 @@
+name: Build, Push & Deploy
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'containerization/project-root/**'
+      - 'orchestration/wordpress-secure/**'
+
+jobs:
+  build-push:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Build WordPress Image
+      run: |
+        cd containerization/project-root
+        docker build -t ghcr.io/datascientest-tarasamira/project-root-wp:v1.2-secure -f wp/Dockerfile .
+
+    - name: Login to GHCR
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ secrets.GHCR_USERNAME }}
+        password: ${{ secrets.GHCR_TOKEN }}
+
+    - name: Push Image
+      run: |
+        docker push ghcr.io/datascientest-tarasamira/project-root-wp:v1.2-secure
+
+  deploy:
+    needs: build-push
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Set up Helm
+      uses: azure/setup-helm@v3
+      with:
+        version: v3.12.0
+
+    - name: Configure Kubernetes
+      uses: azure/k8s-set-context@v3
+      with:
+        kubeconfig: ${{ secrets.KUBECONFIG }}
+
+    - name: Create Namespace
+      run: |
+        kubectl create namespace wordpress-staging --dry-run=client -o yaml | kubectl apply -f -
+        kubectl label namespace wordpress-staging environment=staging phase=orchestration --overwrite
+
+    - name: Deploy Helm Chart
+      run: |
+        cd orchestration/wordpress-secure
+        helm upgrade --install wordpress-orchestration . \
+          --namespace wordpress-staging \
+          --set wordpress.image.repository=ghcr.io/datascientest-tarasamira/project-root-wp \
+          --set wordpress.image.tag=v1.2-secure \
+          --set imageCredentials.username=${{ secrets.GHCR_USERNAME }} \
+          --set imageCredentials.password=${{ secrets.GHCR_TOKEN }} \  
+          --set ingress.hostname=staging.wp.example.com \
+          --set global.storageClass=standard \
+          --set mysql.primary.persistence.storageClass=standard

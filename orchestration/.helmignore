@@ -1,0 +1,9 @@
+# Patterns to ignore when building Helm charts
+.git/
+.gitignore
+*.swp
+*.bak
+*.tmp
+/tests/
+/docs/
+.env

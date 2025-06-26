@@ -1,0 +1,60 @@
+{{- if .Values.phpmyadmin.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: phpmyadmin-deployment
+  namespace: {{ include "wordpress-secure.namespace" . }}
+  labels:
+    {{- include "wordpress-secure.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: phpmyadmin
+  template:
+    metadata:
+      labels:
+        app: phpmyadmin
+        {{- include "wordpress-secure.labels" . | nindent 8 }}
+    spec:
+      securityContext:
+        {{- toYaml .Values.phpmyadmin.securityContext | nindent 8 }}
+      containers:
+      - name: phpmyadmin
+        image: {{ .Values.phpmyadmin.image.repository }}:{{ .Values.phpmyadmin.image.tag }}
+        securityContext:
+          {{- toYaml .Values.phpmyadmin.securityContext | nindent 10 }}
+        env:
+        - name: PMA_HOST
+          value: {{ .Values.phpmyadmin.env.PMA_HOST }}
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mysql-secret
+              key: mysql-root-password
+        ports:
+        - containerPort: 80
+        resources:
+          limits:
+            cpu: 300m
+            memory: 256Mi
+          requests:
+            cpu: 100m
+            memory: 128Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: phpmyadmin-service
+  namespace: {{ include "wordpress-secure.namespace" . }}
+  labels:
+    {{- include "wordpress-secure.labels" . | nindent 4 }}
+spec:
+  selector:
+    app: phpmyadmin
+  ports:
+    - protocol: TCP
+      port: {{ .Values.phpmyadmin.service.port }}
+      targetPort: 80
+  type: {{ .Values.phpmyadmin.service.type }}
+{{- end }}

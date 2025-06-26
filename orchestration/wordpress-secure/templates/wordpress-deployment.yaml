@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wordpress-deployment
+  namespace: {{ include "wordpress-secure.namespace" . }}
+  labels:
+    {{- include "wordpress-secure.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.wordpress.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "wordpress-secure.labels" . | nindent 6 }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+  template:
+    metadata:
+      labels:
+        {{- include "wordpress-secure.labels" . | nindent 8 }}
+      annotations:
+        container.apparmor.security.beta.kubernetes.io/wordpress: runtime/default
+    spec:
+      securityContext:
+        {{- toYaml .Values.global.securityContext | nindent 8 }}
+      imagePullSecrets:
+      - name: {{ .Values.wordpress.image.pullSecret }}
+      initContainers:
+      - name: init-mysql
+        image: busybox:1.28
+        command: ['sh', '-c', 'until nslookup mysql-service; do echo waiting for mysql; sleep 2; done']
+        securityContext:
+          {{- toYaml .Values.wordpress.security.podSecurityContext | nindent 10 }}
+      containers:
+      - name: wordpress
+        image: {{ .Values.wordpress.image.repository }}:{{ .Values.wordpress.image.tag }}
+        securityContext:
+          {{- toYaml .Values.wordpress.security.containerSecurityContext | nindent 10 }}
+        env:
+        - name: WORDPRESS_DB_HOST
+          value: {{ .Values.wordpress.env.WORDPRESS_DB_HOST }}
+        - name: WORDPRESS_DB_NAME
+          valueFrom:
+            secretKeyRef:
+              name: mysql-secret
+              key: mysql-database
+        - name: WORDPRESS_DB_USER
+          value: "root"
+        - name: WORDPRESS_DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mysql-secret
+              key: mysql-root-password
+        ports:
+        - containerPort: 80
+          name: http
+        livenessProbe:
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 60
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 5
+        volumeMounts:
+        - name: wordpress-pv
+          mountPath: /var/www/html
+        resources:
+          {{- toYaml .Values.wordpress.resources | nindent 10 }}
+      volumes:
+      - name: wordpress-pv
+        persistentVolumeClaim:
+          claimName: wordpress-pvc

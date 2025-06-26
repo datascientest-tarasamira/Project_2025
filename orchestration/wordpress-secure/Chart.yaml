@@ -1,0 +1,10 @@
+apiVersion: v2
+name: wordpress-secure
+description: Secure WordPress deployment with MySQL
+version: 1.1.0
+appVersion: "6.4"
+dependencies:
+- name: mysql
+  version: 9.16.0
+  repository: https://charts.bitnami.com/bitnami
+  condition: mysql.enabled

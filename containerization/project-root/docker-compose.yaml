@@ -3,47 +3,50 @@ version: '3.8'
 services:
   db:
     build: ./db
-    image: project-root-db
+    image: project-root-db:8.3.0  
     environment:
-      MYSQL_DATABASE: wordpress
-      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: "${DB_NAME}"
+      MYSQL_ROOT_PASSWORD: "${DB_ROOT_PASSWORD}"
     volumes:
       - db_data:/var/lib/mysql
       - ./wp-data:/docker-entrypoint-initdb.d
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "--password=password"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "--password=${DB_ROOT_PASSWORD}"]
       interval: 5s
       timeout: 10s
       retries: 10
 
   wp:
-    build: ./wordpress
-    image: project-root-wp
+    build: ./wp
+    image: project-root-wp:6.4.3  
     depends_on:
       db:
         condition: service_healthy
     environment:
       WORDPRESS_DB_HOST: db
       WORDPRESS_DB_USER: root
-      WORDPRESS_DB_PASSWORD: password
-      WORDPRESS_DB_NAME: wordpress
+      WORDPRESS_DB_PASSWORD: "${DB_ROOT_PASSWORD}"
+      WORDPRESS_DB_NAME: "${DB_NAME}"
     ports:
-      - "80:80"
+      - "${IP}:${PORT}:80"
     volumes:
       - ./wp-app:/var/www/html
       - ./config/php.conf.ini:/usr/local/etc/php/conf.d/conf.ini
 
   wpcli:
     build: ./wpcli
-    image: project-root-wpcli
+    image: project-root-wpcli:2.10.0 
     volumes:
       - ./wp-app:/var/www/html
       - ./config/php.conf.ini:/usr/local/etc/php/conf.d/conf.ini
     environment:
       WORDPRESS_DB_HOST: db
       WORDPRESS_DB_USER: root
-      WORDPRESS_DB_PASSWORD: password
-      WORDPRESS_DB_NAME: wordpress
+      WORDPRESS_DB_PASSWORD: "${DB_ROOT_PASSWORD}"
+      WORDPRESS_DB_NAME: "${DB_NAME}"
+      WORDPRESS_ADMIN_USER: "${WORDPRESS_ADMIN_USER}"
+      WORDPRESS_ADMIN_PASSWORD: "${WORDPRESS_ADMIN_PASSWORD}"
+      WORDPRESS_ADMIN_EMAIL: "${WORDPRESS_ADMIN_EMAIL}"
     depends_on:
       wp:
         condition: service_started
@@ -52,15 +55,15 @@ services:
 
   pma:
     build: ./pma
-    image: project-root-pma
+    image: project-root-pma:5.2.1  
     depends_on:
       db:
         condition: service_healthy
     environment:
       PMA_HOST: db
-      MYSQL_ROOT_PASSWORD: password
+      MYSQL_ROOT_PASSWORD: "${DB_ROOT_PASSWORD}"
     ports:
-      - "8080:80"
+      - "${IP}:8080:80"
 
 volumes:
   db_data:
