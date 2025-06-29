@@ -20,12 +20,17 @@ spec:
         {{- include "wordpress-secure.labels" . | nindent 8 }}
     spec:
       securityContext:
-        {{- toYaml .Values.mysql.primary.podSecurityContext | nindent 8 }}
+        fsGroup: 1000 
       containers:
       - name: mysql
         image: mysql:8.3.0
         securityContext:
-          {{- toYaml .Values.mysql.primary.containerSecurityContext | nindent 10 }}
+          runAsNonRoot: true
+          runAsUser: 1000
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
         env:
         - name: MYSQL_ROOT_PASSWORD
           valueFrom:
