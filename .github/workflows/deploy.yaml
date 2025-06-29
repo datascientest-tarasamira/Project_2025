@@ -16,8 +16,8 @@ jobs:
 
     - name: Build WordPress Image
       run: |
-        cd containerization/project-root
-        docker build -t ghcr.io/datascientest-tarasamira/project-root-wp:v1.2-secure -f wp/Dockerfile wp/
+        cd containerization/project-root/wp
+        docker build -t ghcr.io/datascientest-tarasamira/project-root-wp:v1.2-secure -f Dockerfile .
 
     - name: Login to GHCR
       uses: docker/login-action@v3
